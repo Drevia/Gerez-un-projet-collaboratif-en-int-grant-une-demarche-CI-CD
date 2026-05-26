@@ -1,0 +1,83 @@
+name: CI/CD Frontend
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'front/**'
+      - '.github/workflows/ci-frontend.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'front/**'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Nécessaire pour SonarCloud
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+        cache: 'npm'
+        cache-dependency-path: 'front/package-lock.json'
+
+    - name: Install dependencies
+      working-directory: ./front
+      run: npm ci
+
+    - name: Install Chrome for testing
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+
+    - name: Run tests with coverage
+      working-directory: ./front
+      run: npm run test -- --code-coverage --watch=false
+      env:
+        CI: true
+
+    - name: Install SonarScanner
+      run: |
+        npm install -g sonarqube-scanner
+
+    - name: Upload coverage to SonarCloud
+      working-directory: ./front
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: |
+        sonar-scanner \
+          -Dsonar.projectKey=bobapp-frontend \
+          -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
+          -Dsonar.sources=src/app \
+          -Dsonar.exclusions="**/*.spec.ts,src/main.ts,src/polyfills.ts,src/test.ts" \
+          -Dsonar.coverage.exclusions="**/*.spec.ts,src/main.ts,src/polyfills.ts,src/test.ts" \
+          -Dsonar.typescript.lcov.reportPaths=coverage/bobapp/lcov.info \
+          -Dsonar.host.url=https://sonarcloud.io \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+
+    - name: Archive coverage reports
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-coverage-reports
+        path: front/coverage/
+        retention-days: 30
+
+    - name: Comment PR with test results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '✅ Frontend tests passed and SonarCloud analysis completed!'
+          })
+
