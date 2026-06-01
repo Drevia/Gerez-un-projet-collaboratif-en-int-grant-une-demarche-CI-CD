@@ -27,24 +27,14 @@ jobs:
         distribution: 'temurin'
         cache: maven
 
-    - name: Run tests with Maven
+    - name: Run tests with Maven and generate JaCoCo report
       working-directory: ./back
-      run: mvn clean test
+      run: mvn clean test jacoco:report
 
-    - name: Generate JaCoCo report
-      working-directory: ./back
-      run: mvn jacoco:report
-
-    - name: Upload coverage reports to SonarCloud
-      working-directory: ./back
+    - name: Build and analyze
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      run: |
-        mvn -B sonar:sonar \
-          -Dsonar.projectKey=bobapp-backend \
-          -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
-          -Dsonar.host.url=https://sonarcloud.io \
-          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+      run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=Drevia_Gerez-un-projet-collaboratif-en-int-grant-une-demarche-CI-CD
 
     - name: Archive coverage reports
       if: always()
