@@ -15,17 +15,21 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        node-version: [14.x]
+
     steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0  # Nécessaire pour SonarCloud
 
     - name: Set up Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
-        node-version: '16'
+        node-version: ${{ matrix.node-version }}
         cache: 'npm'
-        cache-dependency-path: 'front/package-lock.json'
+        cache-dependency-path: front/package-lock.json
 
     - name: Install dependencies
       working-directory: ./front
@@ -46,22 +50,13 @@ jobs:
       run: |
         npm install -g sonarqube-scanner
 
-    - name: Upload coverage to SonarCloud
-      working-directory: ./front
+    - name: Scan SonarCloud
+      uses: SonarSource/sonarqube-scan-action@master
+      with:
+        projectBaseDir: front
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
-      run: |
-        sonar-scanner \
-          -Dsonar.projectKey=bobapp-frontend \
-          -Dsonar.organization=$SONAR_ORGANIZATION \
-          -Dsonar.sources=src/app \
-          -Dsonar.exclusions="**/*.spec.ts,src/main.ts,src/polyfills.ts,src/test.ts" \
-          -Dsonar.coverage.exclusions="**/*.spec.ts,src/main.ts,src/polyfills.ts,src/test.ts" \
-          -Dsonar.typescript.lcov.reportPaths=coverage/bobapp/lcov.info \
-          -Dsonar.host.url=https://sonarcloud.io \
-          -Dsonar.login=$SONAR_TOKEN \
-          -Dsonar.branch.name=main
 
     - name: Archive coverage reports
       if: always()
