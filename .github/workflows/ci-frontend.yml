@@ -1,75 +1,77 @@
-name: CI/CD Frontend
+name: Frontend CI
 
 on:
-  push:
-    branches: [ main, develop ]
-    paths:
-      - 'front/**'
-      - '.github/workflows/ci-frontend.yml'
   pull_request:
-    branches: [ main, develop ]
+    branches: [ "main" ]
     paths:
       - 'front/**'
 
 jobs:
-  build-and-test:
+  build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: front
 
     strategy:
       matrix:
         node-version: [14.x]
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Nécessaire pour SonarCloud
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-        cache-dependency-path: front/package-lock.json
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: front/package.json
 
-    - name: Install dependencies
-      working-directory: ./front
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Run tests with coverage
-      working-directory: ./front
-      run: npm run test -- --code-coverage --watch=false
-      env:
-        CI: true
+      - name: Build
+        run: npm run build --if-present
 
-    - name: Install SonarScanner
-      run: |
-        npm install -g sonarqube-scanner
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: front
 
-    - name: Scan SonarCloud
-      uses: SonarSource/sonarqube-scan-action@master
-      with:
-        projectBaseDir: front
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
+    strategy:
+      matrix:
+        node-version: [ 14.x ]
 
-    - name: Archive coverage reports
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: frontend-coverage-reports
-        path: front/coverage/
-        retention-days: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Comment PR with test results
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v6
-      with:
-        script: |
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: '✅ Frontend tests passed and SonarCloud analysis completed!'
-          })
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: front/package.json
 
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test --code-coverage
+
+      - name: Code coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-report
+          path: ${{ github.workspace }}/front/coverage/bobapp/**
+
+      - name: Scan SonarCloud
+        uses: SonarSource/sonarqube-scan-action@master
+        with:
+          projectBaseDir: front
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_BRANCH_NAME: main
