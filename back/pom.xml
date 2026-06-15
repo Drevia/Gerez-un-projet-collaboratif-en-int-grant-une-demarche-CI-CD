@@ -15,7 +15,7 @@
 	<description>L'application de joke par excellence !</description>
 	<properties>
 		<java.version>11</java.version>
-		<sonar.projectKey>Gerez-un-projet-collaboratif-en-int-grant-une-demarche-CI-CD</sonar.projectKey>
+		<sonar.projectKey>drevia_bobapp-backend</sonar.projectKey>
 		<sonar.organization>drevia</sonar.organization>
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
 		<sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
