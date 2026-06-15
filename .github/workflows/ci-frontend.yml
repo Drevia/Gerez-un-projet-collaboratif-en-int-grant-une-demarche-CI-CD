@@ -79,4 +79,5 @@ jobs:
           projectBaseDir: front
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_FRONT }}
+          SONAR_BRANCH_NAME: main
           SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
